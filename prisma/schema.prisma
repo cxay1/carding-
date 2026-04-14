@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  clerkId         String    @unique
+  email           String    @unique
+  region          String    @default("US")
+  balance         Decimal   @default(0)
+  twoFactorEnabled Boolean  @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  cards           GiftCard[]
+  transactions    Transaction[]
+  disputes        Dispute[]
+}
+
+model GiftCard {
+  id              String    @id @default(uuid())
+  codeEncrypted   String
+  iv              String
+  denomination    Decimal
+  currency        String    @default("USD")
+  region          String    @default("US")
+  status          CardStatus @default(UNUSED)
+  userId          String?
+  user            User?     @relation(fields: [userId], references: [id])
+  purchasedAt    DateTime?
+  redeemedAt      DateTime?
+  expiresAt      DateTime
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Transaction {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  amount        Decimal
+  currency      String
+  gateway       String
+  gatewayRef    String
+  status        TransactionStatus @default(PENDING)
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Dispute {
+  id            String    @id @default(uuid())
+  userId        String
+  transactionId String?
+  type          DisputeType
+  status        DisputeStatus @default(PENDING)
+  evidence      String[]
+  resolution    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  resolvedAt    DateTime?
+}
+
+enum CardStatus { UNUSED USED EXPIRED }
+enum TransactionStatus { PENDING COMPLETED FAILED REFUNDED }
+enum DisputeType { INVALID_CODE, ALREADY_USED, WRONG_REGION }
+enum DisputeStatus { PENDING, UNDER_REVIEW, RESOLVED, REJECTED }
